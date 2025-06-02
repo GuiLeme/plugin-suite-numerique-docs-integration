@@ -6,7 +6,10 @@ import {
   GenericContentMainArea,
   PluginApi,
   GenericContentSidekickArea,
+  GraphqlResponseWrapper,
+  CurrentUserData,
 } from 'bigbluebutton-html-plugin-sdk';
+import { HocuspocusProvider } from '@hocuspocus/provider';
 
 import GenericComponentLinkShare from '../generic-component/component';
 
@@ -19,8 +22,14 @@ function SuiteNumeriqueDocsIntegration(
   BbbPluginSdk.initialize(uuid);
   const [documentUrl, setDocumentUrl] = useState('');
   const pluginApi: PluginApi = BbbPluginSdk.getPluginApi(uuid);
+  const { data: user }: GraphqlResponseWrapper<CurrentUserData> = pluginApi.useCurrentUser();
 
-  const renderDocsInArea = (area: DOCS_AREA, open: boolean) => {
+  const renderDocsInArea = (
+    area: DOCS_AREA,
+    open: boolean,
+    currentUser: CurrentUserData,
+    provider: HocuspocusProvider,
+  ) => {
     if (area === DOCS_AREA.MAIN_AREA) {
       pluginApi.setGenericContentItems([]);
       pluginApi.setGenericContentItems([
@@ -31,8 +40,10 @@ function SuiteNumeriqueDocsIntegration(
               <GenericComponentLinkShare
                 link={documentUrl}
                 renderArea={DOCS_AREA.MAIN_AREA}
+                hocuspocusProvider={provider}
+                user={currentUser}
                 switchGenericContentArea={
-                  () => renderDocsInArea(DOCS_AREA.SIDEKICK_AREA, true)
+                  () => renderDocsInArea(DOCS_AREA.SIDEKICK_AREA, true, currentUser, provider)
                 }
               />,
             );
@@ -53,9 +64,11 @@ function SuiteNumeriqueDocsIntegration(
             root.render(
               <GenericComponentLinkShare
                 link={documentUrl}
+                hocuspocusProvider={provider}
                 renderArea={DOCS_AREA.SIDEKICK_AREA}
+                user={currentUser}
                 switchGenericContentArea={
-                  () => renderDocsInArea(DOCS_AREA.MAIN_AREA, false)
+                  () => renderDocsInArea(DOCS_AREA.MAIN_AREA, false, currentUser, provider)
                 }
               />,
             );
@@ -74,12 +87,23 @@ function SuiteNumeriqueDocsIntegration(
   }, []);
 
   useEffect(() => {
-    if (documentUrl.match(REGEX)) {
-      renderDocsInArea(DOCS_AREA.SIDEKICK_AREA, false);
+    if (documentUrl.match(REGEX) && user) {
+      // Hardcoded settings for demo purposes
+      const USER_ID = user.extId;
+      const USER_ROLE: 'COMMENT-ONLY' | 'READ-WRITE' = 'READ-WRITE';
+      const DOCUMENT_ID = 'mydoc123';
+      const TOKEN = `${USER_ID}__${USER_ROLE}`;
+
+      const provider = new HocuspocusProvider({
+        url: 'wss://bbb30.bbb.imdt.dev/hocuspocus/hocuspocus',
+        token: TOKEN,
+        name: DOCUMENT_ID,
+      });
+      renderDocsInArea(DOCS_AREA.SIDEKICK_AREA, false, user, provider);
     } else {
       pluginApi.setGenericContentItems([]);
     }
-  }, [documentUrl]);
+  }, [documentUrl, user]);
   return null;
 }
 

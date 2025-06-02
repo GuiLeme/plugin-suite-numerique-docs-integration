@@ -1,16 +1,45 @@
 import * as React from 'react';
-import Iframe from 'react-iframe';
 import { DOCS_AREA } from '../suite-numerique-docs-integration/constants';
 import { ButtonIcon } from './button-icon/component';
+import '@blocknote/core/fonts/inter.css';
+import { BlockNoteView } from '@blocknote/mantine';
+import '@blocknote/mantine/style.css';
+import { useCreateBlockNote } from '@blocknote/react';
+import { HocuspocusProvider } from '@hocuspocus/provider';
+import { CurrentUserData } from 'bigbluebutton-html-plugin-sdk';
 
 interface GenericComponentLinkShareProps {
   link: string;
+  user: CurrentUserData;
   switchGenericContentArea: () => void;
+  hocuspocusProvider: HocuspocusProvider;
   renderArea: DOCS_AREA;
 }
 
 function GenericComponentLinkShare(props: GenericComponentLinkShareProps): React.ReactElement {
-  const { link, switchGenericContentArea, renderArea } = props;
+  const {
+    link,
+    user,
+    switchGenericContentArea,
+    renderArea,
+    hocuspocusProvider,
+  } = props;
+
+  const editor = useCreateBlockNote({
+    collaboration: {
+      provider: hocuspocusProvider,
+      fragment: hocuspocusProvider.document.getXmlFragment('doc'),
+      user: {
+        name: user.name,
+        color: '#ff0000',
+      },
+    },
+    resolveUsers: async (userIds) => userIds.map((userId) => ({
+      id: userId,
+      username: user.name,
+      avatarUrl: 'https://placehold.co/100x100',
+    })),
+  });
 
   const changeAreaButtonStyle: React.CSSProperties = {
     zIndex: 1000,
@@ -57,12 +86,9 @@ function GenericComponentLinkShare(props: GenericComponentLinkShareProps): React
           currentArea={renderArea}
         />
       </button>
-      <Iframe
-        url={link}
-        width="100%"
-        height="100%"
-        display="block"
-        position="relative"
+      <BlockNoteView
+        editor={editor}
+        theme="light"
       />
     </div>
   );
